@@ -2216,7 +2216,7 @@ class Format:
                 onehot[mask_zero.unsqueeze(0).expand_as(onehot)] = 0
             else:
                 onehot = torch.zeros(1, self.nc, *labels["masks"].shape[-2:])
-            labels["sem_masks"] = onehot
+            labels["sem_masks"] = onehot.float()
         if self.return_keypoint:
             labels["keypoints"] = (
                 torch.empty(0, 3) if instances.keypoints is None else torch.from_numpy(instances.keypoints)
