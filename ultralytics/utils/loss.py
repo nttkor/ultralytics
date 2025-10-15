@@ -393,8 +393,7 @@ class v8SegmentationLoss(v8DetectionLoss):
             )
 
             if self.semseg_loss and pred_semseg is not None:
-                # sem_masks = batch["sem_masks"].to(self.device).float()
-                sem_masks = torch.ones(batch_size, self.nc, mask_h, mask_w).to(self.device).float()
+                sem_masks = batch["sem_masks"].to(self.device).float()
                 loss[4] = F.binary_cross_entropy_with_logits(pred_semseg, sem_masks)
                 loss[4] *= self.hyp.box  # seg gain
 
