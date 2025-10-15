@@ -213,10 +213,39 @@ class Protov5(nn.Module):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Perform a forward pass through layers using an upsampled input image."""
-        upsampled_p5 = self.bn_act_p5(self.upsample_p5(x[2]) + x[1])
-        upsampled_p4 = self.bn_act_p4(self.upsample_p4(upsampled_p5) + x[0])
+        upsampled_p5 = self.bn_act_p5(self.upsample_p5(x[2])) + x[1]
+        upsampled_p4 = self.bn_act_p4(self.upsample_p4(upsampled_p5)) + x[0]
         return self.cv3(self.cv2(self.upsample_p3(self.cv1(upsampled_p4))))
 
+
+class Protov6(nn.Module):
+    """Ultralytics YOLO models mask Proto module for segmentation models."""
+
+    def __init__(self, c1: int, c_: int = 256, c2: int = 32, nc: int = 80):
+        """
+        Initialize the Ultralytics YOLO models mask Proto module with specified number of protos and masks.
+
+        Args:
+            c1 (int): Input channels.
+            c_ (int): Intermediate channels.
+            c2 (int): Output channels (number of protos).
+        """
+        super().__init__()
+        self.cv1 = Conv(c1, c_, k=3)
+        self.upsample = nn.ConvTranspose2d(c_, c_, 2, 2, 0, bias=True)  # nn.Upsample(scale_factor=2, mode='nearest')
+        self.semseg = nn.Sequential(Conv(c_, c_, k=3), nn.Conv2d(c_, nc, 1))
+        self.cv2 = Conv(c_, c_, k=3)
+        self.cv3 = Conv(c_, c2)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Perform a forward pass through layers using an upsampled input image."""
+        p2_feat = self.upsample(self.cv1(x))
+        insseg = self.cv3(self.cv2(p2_feat))
+        if self.training:
+            semseg = self.semseg(p2_feat)
+            return torch.cat((semseg, insseg), dim=1)
+        return insseg
+    
 
 class HGStem(nn.Module):
     """

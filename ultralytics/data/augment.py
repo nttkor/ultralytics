@@ -2111,6 +2111,8 @@ class Format:
         mask_overlap: bool = True,
         batch_idx: bool = True,
         bgr: float = 0.0,
+        semseg_loss=False,
+        nc=80
     ):
         """
         Initialize the Format class with given parameters for image and instance annotation formatting.
@@ -2154,6 +2156,8 @@ class Format:
         self.mask_overlap = mask_overlap
         self.batch_idx = batch_idx  # keep the batch indexes
         self.bgr = bgr
+        self.semseg_loss = semseg_loss
+        self.nc = nc
 
     def __call__(self, labels: dict[str, Any]) -> dict[str, Any]:
         """
@@ -2204,6 +2208,15 @@ class Format:
         labels["img"] = self._format_img(img)
         labels["cls"] = torch.from_numpy(cls) if nl else torch.zeros(nl, 1)
         labels["bboxes"] = torch.from_numpy(instances.bboxes) if nl else torch.zeros((nl, 4))
+        if self.semseg_loss:
+            if nl:
+                class_ids = labels["cls"].squeeze(1)[labels["masks"].long() - 1]
+                onehot = F.one_hot(class_ids.long(), num_classes=self.nc).permute(0, 3, 1, 2)
+                mask_zero = labels["masks"] == 0
+                onehot[mask_zero.unsqueeze(0).expand_as(onehot)] = 0
+            else:
+                onehot = torch.zeros(1, self.nc, *labels["masks"].shape[-2:])
+            labels["sem_masks"] = onehot
         if self.return_keypoint:
             labels["keypoints"] = (
                 torch.empty(0, 3) if instances.keypoints is None else torch.from_numpy(instances.keypoints)

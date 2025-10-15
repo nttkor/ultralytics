@@ -67,6 +67,7 @@ from ultralytics.nn.modules import (
     Segmentv3,
     Segmentv4,
     Segmentv5,
+    Segmentv6,
     TorchVision,
     WorldDetect,
     YOLOEDetect,
@@ -415,7 +416,7 @@ class DetectionModel(BaseModel):
                 """Perform a forward pass through the model, handling different Detect subclass types accordingly."""
                 if self.end2end:
                     return self.forward(x)["one2many"]
-                return self.forward(x)[0] if isinstance(m, (Segment, Segmentv2, Segmentv3, Segmentv4, Segmentv5, YOLOESegment, Pose, OBB)) else self.forward(x)
+                return self.forward(x)[0] if isinstance(m, (Segment, Segmentv2, Segmentv3, Segmentv4, Segmentv5, Segmentv6, YOLOESegment, Pose, OBB)) else self.forward(x)
 
             self.model.eval()  # Avoid changing batch statistics until training begins
             m.training = True  # Setting it to True to properly return strides
@@ -1669,12 +1670,12 @@ def parse_model(d, ch, verbose=True):
         elif m is Concat:
             c2 = sum(ch[x] for x in f)
         elif m in frozenset(
-            {Detect, WorldDetect, YOLOEDetect, Segment, Segmentv2, Segmentv3, Segmentv4, Segmentv5, YOLOESegment, Pose, OBB, ImagePoolingAttn, v10Detect}
+            {Detect, WorldDetect, YOLOEDetect, Segment, Segmentv2, Segmentv3, Segmentv4, Segmentv5, Segmentv6, YOLOESegment, Pose, OBB, ImagePoolingAttn, v10Detect}
         ):
             args.append([ch[x] for x in f])
-            if m in {Segment, Segmentv2, Segmentv3, Segmentv4, Segmentv5, YOLOESegment}:
+            if m in {Segment, Segmentv2, Segmentv3, Segmentv4, Segmentv5, Segmentv6, YOLOESegment}:
                 args[2] = make_divisible(min(args[2], max_channels) * width, 8)
-            if m in {Detect, YOLOEDetect, Segment, Segmentv2, Segmentv3, Segmentv4, Segmentv5, YOLOESegment, Pose, OBB}:
+            if m in {Detect, YOLOEDetect, Segment, Segmentv2, Segmentv3, Segmentv4, Segmentv5, Segmentv6, YOLOESegment, Pose, OBB}:
                 m.legacy = legacy
         elif m is RTDETRDecoder:  # special case, channels arg must be passed in index 1
             args.insert(1, [ch[x] for x in f])

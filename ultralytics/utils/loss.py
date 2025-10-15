@@ -311,11 +311,19 @@ class v8SegmentationLoss(v8DetectionLoss):
         """Initialize the v8SegmentationLoss class with model parameters and mask overlap setting."""
         super().__init__(model)
         self.overlap = model.args.overlap_mask
+        self.semseg_loss = model.args.semseg_loss
 
     def __call__(self, preds: Any, batch: dict[str, torch.Tensor]) -> tuple[torch.Tensor, torch.Tensor]:
         """Calculate and return the combined loss for detection and segmentation."""
-        loss = torch.zeros(4, device=self.device)  # box, seg, cls, dfl
+        # loss = torch.zeros(4, device=self.device)  # box, seg, cls, dfl
+        loss = torch.zeros(5 if self.semseg_loss else 4, device=self.device)  # box, seg, cls, dfl
         feats, pred_masks, proto = preds if len(preds) == 3 else preds[1]
+        if self.semseg_loss and proto.shape[1] - self.nc > 0:
+            mask_dim = proto.shape[1] - self.nc
+            proto, pred_semseg = torch.split(proto, (mask_dim, self.nc), dim=1)
+        else:
+            pred_semseg = None
+
         batch_size, _, mask_h, mask_w = proto.shape  # batch size, number of masks, mask height, mask width
         pred_distri, pred_scores = torch.cat([xi.view(feats[0].shape[0], self.no, -1) for xi in feats], 2).split(
             (self.reg_max * 4, self.nc), 1
@@ -384,9 +392,17 @@ class v8SegmentationLoss(v8DetectionLoss):
                 fg_mask, masks, target_gt_idx, target_bboxes, batch_idx, proto, pred_masks, imgsz, self.overlap
             )
 
+            if self.semseg_loss and pred_semseg is not None:
+                # sem_masks = batch["sem_masks"].to(self.device).float()
+                sem_masks = torch.ones(batch_size, self.nc, mask_h, mask_w).to(self.device).float()
+                loss[4] = F.binary_cross_entropy_with_logits(pred_semseg, sem_masks)
+                loss[4] *= self.hyp.box  # seg gain
+
         # WARNING: lines below prevent Multi-GPU DDP 'unused gradient' PyTorch errors, do not remove
         else:
             loss[1] += (proto * 0).sum() + (pred_masks * 0).sum()  # inf sums may lead to nan loss
+            if self.semseg_loss:
+                loss[4] += (proto * 0).sum() + (pred_masks * 0).sum()  # inf sums may lead to nan loss
 
         loss[0] *= self.hyp.box  # box gain
         loss[1] *= self.hyp.box  # seg gain
