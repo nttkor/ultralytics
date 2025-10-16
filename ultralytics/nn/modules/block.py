@@ -243,9 +243,9 @@ class Protov6(nn.Module):
         insseg = self.cv3(self.cv2(p2_feat))
         if self.training:
             semseg = self.semseg(p2_feat)
-            return torch.cat((semseg, insseg), dim=1)
+            return torch.cat((insseg, semseg), dim=1)
         return insseg
-    
+
 
 class HGStem(nn.Module):
     """
