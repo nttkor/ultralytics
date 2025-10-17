@@ -213,8 +213,8 @@ class Protov5(nn.Module):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Perform a forward pass through layers using an upsampled input image."""
-        upsampled_p5 = self.bn_act_p5(self.upsample_p5(x[2]) + x[1])
-        upsampled_p4 = self.bn_act_p4(self.upsample_p4(upsampled_p5) + x[0])
+        upsampled_p5 = self.bn_act_p5(self.upsample_p5(x[2])) + x[1]
+        upsampled_p4 = self.bn_act_p4(self.upsample_p4(upsampled_p5)) + x[0]
         return self.cv3(self.cv2(self.upsample_p3(self.cv1(upsampled_p4))))
 
 
