@@ -89,6 +89,7 @@ from .head import (
     Segmentv4,
     Segmentv5,
     Segmentv6,
+    Segmentv7,
     WorldDetect,
     YOLOEDetect,
     YOLOESegment,
