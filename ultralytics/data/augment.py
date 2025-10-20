@@ -2210,13 +2210,19 @@ class Format:
         labels["bboxes"] = torch.from_numpy(instances.bboxes) if nl else torch.zeros((nl, 4))
         if self.semseg_loss:
             if nl:
-                class_ids = labels["cls"].squeeze(1)[labels["masks"].long() - 1]
-                onehot = F.one_hot(class_ids.long(), num_classes=self.nc).permute(0, 3, 1, 2)
-                mask_zero = labels["masks"] == 0
-                onehot[mask_zero.unsqueeze(0).expand_as(onehot)] = 0
+                # onehot binary mask
+                sem_masks = labels["cls"].squeeze(1)[labels["masks"].long() - 1]  # 1xHxW
+                sem_masks = F.one_hot(sem_masks.long(), num_classes=self.nc).permute(0, 3, 1, 2)  # 1xncxHxW
+                mask_zero = labels["masks"] == 0  # 1xHxW
+                sem_masks[mask_zero.unsqueeze(0).expand_as(sem_masks)] = 0
+                # multi-class mask
+                # sem_masks = labels["cls"].squeeze(1)[labels["masks"].long() - 1]  # 1xHxW
+                # mask_zero = labels["masks"] == 0  # 1xHxW
+                # sem_masks[mask_zero] = 255  # ignore mask
             else:
-                onehot = torch.zeros(1, self.nc, *labels["masks"].shape[-2:])
-            labels["sem_masks"] = onehot.float()
+                sem_masks = torch.zeros(1, self.nc, *labels["masks"].shape[-2:])
+                # sem_masks = torch.zeros(1, *labels["masks"].shape[-2:])
+            labels["sem_masks"] = sem_masks.float()
         if self.return_keypoint:
             labels["keypoints"] = (
                 torch.empty(0, 3) if instances.keypoints is None else torch.from_numpy(instances.keypoints)
