@@ -311,31 +311,19 @@ class MultiChannelDiceLoss(nn.Module):
         self.reduction = reduction
 
     def forward(self, pred, target):
-        """
-        Args:
-            pred (torch.Tensor): 预测张量，形状为 [N, C, H, W] 或 [N, C, D, H, W]
-            target (torch.Tensor): 目标张量，形状为 [N, H, W] 或 [N, D, H, W]，值为0,1,...,C-1
-        Returns:
-            torch.Tensor: Dice loss
-        """
         assert pred.size() == target.size(), "the size of predict and target must be equal."
-        # 应用sigmoid激活函数
+
         pred = torch.sigmoid(pred)
 
-        # 计算交集和并集
         intersection = (pred * target).sum(dim=(2, 3))
         union = pred.sum(dim=(2, 3)) + target.sum(dim=(2, 3))
 
-        # 计算Dice系数
         dice = (2. * intersection + self.smooth) / (union + self.smooth)
 
-        # 计算Dice loss
         dice_loss = 1. - dice
 
-        # 按通道平均
         dice_loss = dice_loss.mean(dim=1)
 
-        # 缩减
         if self.reduction == 'mean':
             return dice_loss.mean()
         elif self.reduction == 'sum':
@@ -352,29 +340,21 @@ class MultiClassDiceLoss(nn.Module):
         self.ignore_index = ignore_index
 
     def forward(self, pred, target):
-        """
-        Args:
-            pred: [N, C, H, W]
-            target: [N, H, W]
-        """
-        # 应用softmax
         pred = F.softmax(pred, dim=1)
 
-        # 将目标转换为one-hot编码
+        # conver to onehot
         n, c, h, w = pred.shape
         target_one_hot = torch.zeros(n, c, h, w, device=pred.device)
         mask = target == self.ignore_index
         target[mask] = 0
         target_one_hot.scatter_(1, target.unsqueeze(1).long(), 1)
 
-        # 处理忽略的索引
         if self.ignore_index is not None:
             tmask = ~mask
             tmask = tmask.unsqueeze(1).expand_as(target_one_hot)
             target_one_hot = target_one_hot * tmask
             pred = pred * tmask
 
-        # 计算每个类别的Dice系数
         intersection = (pred * target_one_hot).sum(dim=(2, 3))
         union = pred.sum(dim=(2, 3)) + target_one_hot.sum(dim=(2, 3))
 
@@ -400,6 +380,9 @@ class BCEDiceLoss(nn.Module):
         self.dice = MultiChannelDiceLoss(smooth=1)
 
     def forward(self, pred, target):
+        _, __, mask_h, mask_w = pred.shape
+        if tuple(target.shape[-2:]) != (mask_h, mask_w):  # downsample to the same size as pred
+            target = F.interpolate(target, (mask_h, mask_w), mode="nearest")
         bce_loss = self.bce(pred, target)
         dice_loss = self.dice(pred, target)
         return self.weight_bce * bce_loss + self.weight_dice * dice_loss
