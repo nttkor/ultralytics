@@ -426,9 +426,8 @@ class v8SegmentationLoss(v8DetectionLoss):
         # loss = torch.zeros(4, device=self.device)  # box, seg, cls, dfl
         loss = torch.zeros(5 if self.semseg_loss else 4, device=self.device)  # box, seg, cls, dfl
         feats, pred_masks, proto = preds if len(preds) == 3 else preds[1]
-        if self.semseg_loss and proto.shape[1] - self.nc > 0:
-            mask_dim = proto.shape[1] - self.nc
-            proto, pred_semseg = torch.split(proto, (mask_dim, self.nc), dim=1)
+        if self.semseg_loss and len(proto) == 2:
+            proto, pred_semseg = proto
         else:
             pred_semseg = None
 

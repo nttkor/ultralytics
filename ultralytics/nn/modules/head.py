@@ -609,10 +609,9 @@ class Segmentv7(Detect):
         mc = torch.cat([self.cv4[i](x[i]).view(bs, self.nm, -1) for i in range(self.nl)], 2)  # mask coefficients
         if self.training:
             semseg = self.semseg(x[0])
-            p = torch.cat((p, semseg), dim=1)
         x = Detect.forward(self, x)
         if self.training:
-            return x, mc, p
+            return x, mc, (p, semseg)
         return (torch.cat([x, mc], 1), p) if self.export else (torch.cat([x[0], mc], 1), (x[1], mc, p))
 
 
@@ -666,10 +665,9 @@ class Segmentv8(Detect):
         mc = torch.cat([self.cv4[i](x[i]).view(bs, self.nm, -1) for i in range(self.nl)], 2)  # mask coefficients
         if self.training:
             semseg = self.semseg(x[0])
-            p = torch.cat((p, semseg), dim=1)
         x = Detect.forward(self, x)
         if self.training:
-            return x, mc, p
+            return x, mc, (p, semseg)
         return (torch.cat([x, mc], 1), p) if self.export else (torch.cat([x[0], mc], 1), (x[1], mc, p))
 
 
