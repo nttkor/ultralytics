@@ -551,7 +551,7 @@ class Segmentv6(Detect):
     def forward(self, x: list[torch.Tensor]) -> tuple | list[torch.Tensor]:
         """Return model outputs and mask coefficients if training, otherwise return outputs and mask coefficients."""
         p = self.proto(x[0])  # mask protos
-        bs = p.shape[0]  # batch size
+        bs = x[0].shape[0]  # batch size
         mc = torch.cat([self.cv4[i](x[i]).view(bs, self.nm, -1) for i in range(self.nl)], 2)  # mask coefficients
         x = Detect.forward(self, x)
         if self.training:
