@@ -726,6 +726,64 @@ class Segmentv8(Detect):
         return (torch.cat([x, mc], 1), p) if self.export else (torch.cat([x[0], mc], 1), (x[1], mc, p))
 
 
+class Segmentv8_add(Detect):
+    """
+    Reduce channel number & upsample P4 and P5 features and then fuse with P3 feature by add in ProtoNet.
+    speed | params | FLOPS: 1.3±0.0 ms | 2.9 | 9.9
+
+    YOLO Segment head for segmentation models.
+
+    This class extends the Detect head to include mask prediction capabilities for instance segmentation tasks.
+
+    Attributes:
+        nm (int): Number of masks.
+        npr (int): Number of protos.
+        proto (Proto): Prototype generation module.
+        cv4 (nn.ModuleList): Convolution layers for mask coefficients.
+
+    Methods:
+        forward: Return model outputs and mask coefficients.
+
+    Examples:
+        Create a segmentation head
+        >>> segment = Segment(nc=80, nm=32, npr=256, ch=(256, 512, 1024))
+        >>> x = [torch.randn(1, 256, 80, 80), torch.randn(1, 512, 40, 40), torch.randn(1, 1024, 20, 20)]
+        >>> outputs = segment(x)
+    """
+
+    def __init__(self, nc: int = 80, nm: int = 32, npr: int = 256, ch: tuple = ()):
+        """
+        Initialize the YOLO model attributes such as the number of masks, prototypes, and the convolution layers.
+
+        Args:
+            nc (int): Number of classes.
+            nm (int): Number of masks.
+            npr (int): Number of protos.
+            ch (tuple): Tuple of channel sizes from backbone feature maps.
+        """
+        super().__init__(nc, ch)
+        self.nm = nm  # number of masks
+        self.npr = npr  # number of protos
+        self.proto = Protov4_add(ch, self.npr, self.nm)  # protos
+        self.semseg = Semsegv2(ch[0], self.npr, nc)
+
+        c4 = max(ch[0] // 4, self.nm)
+        self.cv4 = nn.ModuleList(nn.Sequential(Conv(x, c4, 3), Conv(c4, c4, 3), nn.Conv2d(c4, self.nm, 1)) for x in ch)
+
+    def forward(self, x: list[torch.Tensor]) -> tuple | list[torch.Tensor]:
+        """Return model outputs and mask coefficients if training, otherwise return outputs and mask coefficients."""
+        p = self.proto(x)  # mask protos
+        bs = p.shape[0]  # batch size
+
+        mc = torch.cat([self.cv4[i](x[i]).view(bs, self.nm, -1) for i in range(self.nl)], 2)  # mask coefficients
+        if self.training:
+            semseg = self.semseg(x[0])
+        x = Detect.forward(self, x)
+        if self.training:
+            return x, mc, (p, semseg)
+        return (torch.cat([x, mc], 1), p) if self.export else (torch.cat([x[0], mc], 1), (x[1], mc, p))
+
+
 class OBB(Detect):
     """
     YOLO OBB detection head for detection with rotation models.
