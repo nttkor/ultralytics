@@ -247,6 +247,80 @@ class Protov5(nn.Module):
         return self.cv3(self.cv2(self.upsample_p3(self.cv1(upsampled_p4))))
 
 
+class Protov6(nn.Module):
+    """Ultralytics YOLO models mask Proto module for segmentation models."""
+
+    def __init__(self, c1: int, c_: int = 256, c2: int = 32, nc: int = 80):
+        """
+        Initialize the Ultralytics YOLO models mask Proto module with specified number of protos and masks.
+
+        Args:
+            c1 (int): Input channels.
+            c_ (int): Intermediate channels.
+            c2 (int): Output channels (number of protos).
+        """
+        super().__init__()
+        self.cv1 = Conv(c1, c_, k=3)
+        self.upsample = nn.ConvTranspose2d(c_, c_, 2, 2, 0, bias=True)  # nn.Upsample(scale_factor=2, mode='nearest')
+        self.semseg = nn.Sequential(Conv(c_, c_, k=3), nn.Conv2d(c_, nc, 1))
+        self.cv2 = Conv(c_, c_, k=3)
+        self.cv3 = Conv(c_, c2)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Perform a forward pass through layers using an upsampled input image."""
+        p2_feat = self.upsample(self.cv1(x))
+        insseg = self.cv3(self.cv2(p2_feat))
+        if self.training:
+            semseg = self.semseg(p2_feat)
+            return insseg, semseg
+        return insseg
+
+
+class Semseg(nn.Module):
+    """Ultralytics YOLO models mask Proto module for segmentation models."""
+
+    def __init__(self, c1: int, c_: int = 256, nc: int = 80):
+        """
+        Initialize the Ultralytics YOLO models mask Proto module with specified number of protos and masks.
+
+        Args:
+            c1 (int): Input channels.
+            c_ (int): Intermediate channels.
+            c2 (int): Output channels (number of protos).
+        """
+        super().__init__()
+        self.cv1 = Conv(c1, c_, k=3)
+        self.upsample = nn.ConvTranspose2d(c_, c_, 2, 2, 0, bias=True)  # nn.Upsample(scale_factor=2, mode='nearest')
+        self.cv2 = Conv(c_, c_, k=3)
+        self.cv3 = nn.Conv2d(c_, nc, 1)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Perform a forward pass through layers using an upsampled input image."""
+        return self.cv3(self.cv2(self.upsample(self.cv1(x))))
+
+
+class Semsegv2(nn.Module):
+    """Ultralytics YOLO models mask Proto module for segmentation models."""
+
+    def __init__(self, c1: int, c_: int = 256, nc: int = 80):
+        """
+        Initialize the Ultralytics YOLO models mask Proto module with specified number of protos and masks.
+
+        Args:
+            c1 (int): Input channels.
+            c_ (int): Intermediate channels.
+            c2 (int): Output channels (number of protos).
+        """
+        super().__init__()
+        self.cv1 = Conv(c1, c_, k=3)
+        self.cv2 = Conv(c_, c_, k=3)
+        self.cv3 = nn.Conv2d(c_, nc, 1)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Perform a forward pass through layers using an upsampled input image."""
+        return self.cv3(self.cv2((self.cv1(x))))
+
+
 class HGStem(nn.Module):
     """
     StemBlock of PPHGNetV2 with 5 convolutions and one maxpool2d.
