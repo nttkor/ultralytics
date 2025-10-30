@@ -245,7 +245,7 @@ class DetectionValidator(BaseValidator):
             self.seen = len(self.dataloader.dataset)  # total image count from dataset
         elif RANK > 0:
             dist.gather_object(self.metrics.stats, None, dst=0)
-            dist.gather_object(self.jdict, None, dst=0)
+            self.jdict = []
             self.metrics.clear_stats()
 
     def get_stats(self) -> dict[str, Any]:
