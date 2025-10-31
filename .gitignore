@@ -174,3 +174,11 @@ pnnx*
 
 # calibration image
 calibration_*.npy
+**/REAL_DATASET/
+**/DATASET/
+**/data/
+**/*.csv
+**/*_data
+**/*.jpg
+**/*.mp4
+**/*.zip
